@@ -32,9 +32,7 @@ contract ServiceRegistry is Ownable {
 
     IERC20 public immutable usdcToken;
 
-    // Denominated in USDC's smallest unit. The spec assumes 6 decimals,
-    // so 100e6 = 100 USDC. If the deployed payment token uses different
-    // decimals, redeploy with the right constant or refactor to a setter.
+    
     uint256 public constant MIN_STAKE = 100e6;
 
     mapping(bytes32 => Service) public services;

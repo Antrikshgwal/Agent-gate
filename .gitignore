@@ -1,0 +1,26 @@
+# Local user state (Kite Passport CLI install)
+.kite-passport/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+
+# Node / pnpm
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Logs / caches
+*.log
+.cache/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
