@@ -22,7 +22,10 @@ export const config = {
     rpcUrl: () => required("KITE_RPC_URL"),
     chainId: parseInt(optional("KITE_CHAIN_ID", "2368"), 10),
     facilitatorUrl: () => optional("KITE_FACILITATOR_URL", "https://facilitator.pieverse.io"),
-    facilitatorNetwork: () => optional("KITE_FACILITATOR_NETWORK", "kite-testnet"),
+    // Pieverse expects CAIP-2 form ("eip155:<chainId>"). Always derive from
+    // KITE_CHAIN_ID rather than honoring a legacy env value.
+    facilitatorNetwork: () =>
+      `eip155:${optional("KITE_CHAIN_ID", "2368")}`,
   },
 
   gateway: {
