@@ -1,0 +1,23 @@
+{
+  "name": "@agentgate/sdk",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for AgentGate. Wraps the x402 v2 payment flow so agents can call any AgentGate service with one method.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "example:weather": "tsx examples/weather.ts"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "ethers": "^6.13.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "dotenv": "^16.4.5"
+  }
+}
