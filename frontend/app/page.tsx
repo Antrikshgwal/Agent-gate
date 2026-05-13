@@ -29,14 +29,15 @@ export default async function HomePage() {
           live on Kite Testnet — chain 2368
         </div>
         <h1 className="max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
-          The <span className="text-accent">x402 gateway</span>
+          A <span className="text-accent">marketplace</span> where
           <br />
-          for AI agents on Kite.
+          AI agents meet legacy APIs.
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-ink-muted">
-          AgentGate is a permissionless directory of paid APIs. Agents pay
-          per-call in USDC via EIP-3009; service providers stake on-chain and
-          earn a reputation that compounds with every successful settlement.
+          Providers carry the legacy API subscriptions and resell them on a
+          pay-per-call basis. Agents discover, pay in USDC over x402, and earn
+          reputation. Discovery, settlement, and accountability all live on
+          Kite Chain.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <ButtonLink href="/services">Explore services →</ButtonLink>
