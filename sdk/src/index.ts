@@ -10,3 +10,9 @@ export type {
   PaymentPayload,
   Eip3009Authorization,
 } from "./types.js";
+export { findProvider } from "./discovery.js";
+export type {
+  DiscoveredService,
+  FindProviderOptions,
+  SelectionStrategy,
+} from "./discovery.js";
