@@ -17,6 +17,12 @@ const ATTESTATION_LOGGER_ABI = [
   "function logAttestation(bytes32 serviceId, bytes32 agentDID, uint256 amountPaid, bytes32 x402PaymentHash, bool success, uint256 latencyMs) returns (bytes32)",
 ];
 
+const PAYMENT_SPLITTER_ABI = [
+  "function distribute(bytes32 serviceId, uint256 amount)",
+  "function sweep() returns (uint256)",
+  "function PROVIDER_BPS() view returns (uint256)",
+];
+
 let _provider: JsonRpcProvider | null = null;
 let _wallet: Wallet | null = null;
 
@@ -44,6 +50,16 @@ export function agentRegistry(): Contract {
 
 export function attestationLogger(): Contract {
   return new Contract(config.contracts.attestationLogger(), ATTESTATION_LOGGER_ABI, gatewayWallet());
+}
+
+export function paymentSplitter(): Contract {
+  return new Contract(config.contracts.paymentSplitter(), PAYMENT_SPLITTER_ABI, gatewayWallet());
+}
+
+export async function distributeSettlement(serviceId: string, amount: bigint): Promise<string> {
+  const tx = await paymentSplitter().distribute(serviceId, amount);
+  const receipt = await tx.wait();
+  return receipt?.hash ?? tx.hash;
 }
 
 export interface OnChainService {

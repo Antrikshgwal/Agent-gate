@@ -31,17 +31,18 @@ export const config = {
   gateway: {
     walletAddress: () => required("GATEWAY_WALLET_ADDRESS"),
     privateKey: () => required("GATEWAY_PRIVATE_KEY"),
-    feeBps: 200, // 2% protocol fee added on top of the service price
+    // Shared secret sent as X-AgentGate-Auth to every provider. Each
+    // provider must hold the same value in its AGENTGATE_GATEWAY_SECRET.
+    providerAuthSecret: () => required("AGENTGATE_GATEWAY_SECRET"),
+    // ms allowed for provider HTTP call before we treat it as an outage.
+    providerCallTimeoutMs: parseInt(optional("PROVIDER_CALL_TIMEOUT_MS", "15000"), 10),
   },
 
   contracts: {
     serviceRegistry: () => required("SERVICE_REGISTRY_ADDR"),
     agentRegistry: () => required("AGENT_REGISTRY_ADDR"),
     attestationLogger: () => required("ATTESTATION_LOGGER_ADDR"),
+    paymentSplitter: () => required("PAYMENT_SPLITTER_ADDR"),
     usdc: () => required("USDC_ADDR"),
-  },
-
-  apiKeys: {
-    openWeather: () => required("OPENWEATHER_API_KEY"),
   },
 };
