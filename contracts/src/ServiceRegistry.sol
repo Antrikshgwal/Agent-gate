@@ -50,6 +50,11 @@ contract ServiceRegistry is Ownable {
     event ServiceCalled(bytes32 indexed serviceId, bool success);
     event StakeSlashed(bytes32 indexed serviceId, uint256 amount, string reason);
     event ServiceDeactivated(bytes32 indexed serviceId);
+    event EndpointUpdated(
+        bytes32 indexed serviceId,
+        string oldEndpoint,
+        string newEndpoint
+    );
     event AttestationLoggerSet(address indexed logger);
 
     error InsufficientStake(uint256 provided, uint256 required);
@@ -57,6 +62,7 @@ contract ServiceRegistry is Ownable {
     error NotProvider(address caller, address provider);
     error ServiceInactive(bytes32 serviceId);
     error InsufficientStakeForSlash(uint256 stake, uint256 amount);
+    error EmptyEndpoint();
 
     modifier onlyAttestationLogger() {
         if (msg.sender != attestationLogger) revert NotAttestationLogger(msg.sender);
@@ -149,6 +155,20 @@ contract ServiceRegistry is Ownable {
         if (msg.sender != svc.provider) revert NotProvider(msg.sender, svc.provider);
         svc.isActive = false;
         emit ServiceDeactivated(_serviceId);
+    }
+
+    /// @notice Rotate the backend URL the gateway forwards calls to. Only the
+    ///         original provider can update; identity stays pinned to the
+    ///         msg.sender captured at registration time.
+    function updateEndpoint(bytes32 _serviceId, string calldata _newEndpoint)
+        external
+    {
+        Service storage svc = services[_serviceId];
+        if (msg.sender != svc.provider) revert NotProvider(msg.sender, svc.provider);
+        if (bytes(_newEndpoint).length == 0) revert EmptyEndpoint();
+        string memory old = svc.endpoint;
+        svc.endpoint = _newEndpoint;
+        emit EndpointUpdated(_serviceId, old, _newEndpoint);
     }
 
     function getServiceById(bytes32 _serviceId) external view returns (Service memory) {

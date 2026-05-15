@@ -5,13 +5,15 @@ import {Script, console} from "forge-std/Script.sol";
 import {ServiceRegistry} from "../src/ServiceRegistry.sol";
 import {AgentRegistry} from "../src/AgentRegistry.sol";
 import {AttestationLogger} from "../src/AttestationLogger.sol";
+import {PaymentSplitter} from "../src/PaymentSplitter.sol";
 
-/// @notice Deploys the three AgentGate contracts in production wiring.
+/// @notice Deploys the four AgentGate contracts in production wiring.
 ///
 /// Required env vars (see .env.example):
-///   PRIVATE_KEY              — deployer / protocol owner
+///   DEPLOYER_PRIVATE_KEY     — deployer / protocol owner
 ///   USDC_ADDR                — payment token (real USDC or our MockUSDC)
-///   GATEWAY_WALLET_ADDRESS   — final owner of AttestationLogger
+///   GATEWAY_WALLET_ADDRESS   — final owner of AttestationLogger + PaymentSplitter;
+///                              also receives the 5% protocol share via the splitter.
 ///
 /// Usage:
 ///   source .env
@@ -31,13 +33,22 @@ contract DeployScript is Script {
             address(serviceRegistry),
             address(agentRegistry)
         );
+        // The gateway wallet doubles as the protocol treasury — 5% of every
+        // call flows there via the splitter. Could split these roles later.
+        PaymentSplitter paymentSplitter = new PaymentSplitter(
+            usdc,
+            address(serviceRegistry),
+            gateway
+        );
 
         serviceRegistry.setAttestationLogger(address(attestationLogger));
         agentRegistry.setAttestationLogger(address(attestationLogger));
 
-        // AttestationLogger's owner is the only address that can write
-        // attestations. In production that's the gateway service wallet.
+        // Production wiring: the gateway wallet owns both AttestationLogger
+        // (only it can log attestations) and PaymentSplitter (only it can
+        // call `distribute` after a successful Pieverse settlement).
         attestationLogger.transferOwnership(gateway);
+        paymentSplitter.transferOwnership(gateway);
 
         vm.stopBroadcast();
 
@@ -46,13 +57,15 @@ contract DeployScript is Script {
         console.log("ServiceRegistry     :", address(serviceRegistry));
         console.log("AgentRegistry       :", address(agentRegistry));
         console.log("AttestationLogger   :", address(attestationLogger));
-        console.log("Gateway (logger owner):", gateway);
+        console.log("PaymentSplitter     :", address(paymentSplitter));
+        console.log("Gateway / treasury  :", gateway);
 
         _writeAddresses(
             usdc,
             address(serviceRegistry),
             address(agentRegistry),
             address(attestationLogger),
+            address(paymentSplitter),
             gateway
         );
     }
@@ -62,6 +75,7 @@ contract DeployScript is Script {
         address serviceRegistry,
         address agentRegistry,
         address attestationLogger,
+        address paymentSplitter,
         address gateway
     ) internal {
         string memory key = "deployments";
@@ -69,6 +83,7 @@ contract DeployScript is Script {
         vm.serializeAddress(key, "ServiceRegistry", serviceRegistry);
         vm.serializeAddress(key, "AgentRegistry", agentRegistry);
         vm.serializeAddress(key, "AttestationLogger", attestationLogger);
+        vm.serializeAddress(key, "PaymentSplitter", paymentSplitter);
         string memory json = vm.serializeAddress(key, "GatewayOwner", gateway);
 
         string memory path = string.concat(

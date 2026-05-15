@@ -246,4 +246,48 @@ contract ServiceRegistryTest is Test {
 
         assertFalse(registry.getServiceById(id).isActive);
     }
+
+    // --- updateEndpoint -------------------------------------------------
+
+    function test_UpdateEndpoint_HappyPath() public {
+        bytes32 id = _register(provider);
+        vm.prank(provider);
+        registry.updateEndpoint(id, "https://new.provider.example");
+        assertEq(
+            registry.getServiceById(id).endpoint,
+            "https://new.provider.example"
+        );
+    }
+
+    function test_UpdateEndpoint_EmitsEvent() public {
+        bytes32 id = _register(provider);
+        vm.expectEmit(true, false, false, true, address(registry));
+        emit ServiceRegistry.EndpointUpdated(
+            id,
+            "https://api.openweathermap.org",
+            "https://new.provider.example"
+        );
+        vm.prank(provider);
+        registry.updateEndpoint(id, "https://new.provider.example");
+    }
+
+    function test_UpdateEndpoint_OnlyProvider() public {
+        bytes32 id = _register(provider);
+        vm.prank(outsider);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ServiceRegistry.NotProvider.selector,
+                outsider,
+                provider
+            )
+        );
+        registry.updateEndpoint(id, "https://anything");
+    }
+
+    function test_UpdateEndpoint_RevertsOnEmpty() public {
+        bytes32 id = _register(provider);
+        vm.prank(provider);
+        vm.expectRevert(ServiceRegistry.EmptyEndpoint.selector);
+        registry.updateEndpoint(id, "");
+    }
 }
