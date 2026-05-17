@@ -29,9 +29,7 @@ export default async function HomePage() {
           live on Kite Testnet — chain 2368
         </div>
         <h1 className="max-w-3xl text-5xl font-semibold leading-[1.05] tracking-tight md:text-6xl">
-          A <span className="text-accent">marketplace</span> where
-          <br />
-          AI agents meet legacy APIs.
+         Making internet more accesible for<strong className=" text-accent text-blue-200"> AI-agents</strong>
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-ink-muted">
           Providers carry the legacy API subscriptions and resell them on a
@@ -40,7 +38,10 @@ export default async function HomePage() {
           Kite Chain.
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
-          <ButtonLink href="/services">Explore services →</ButtonLink>
+          <ButtonLink href="/playground">Try as an agent →</ButtonLink>
+          <ButtonLink href="/services" variant="secondary">
+            Explore services
+          </ButtonLink>
           <ButtonLink href="/register" variant="secondary">
             Register a service
           </ButtonLink>
