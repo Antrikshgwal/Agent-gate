@@ -16,6 +16,12 @@ export function Nav() {
           <Link href="/services" className="hover:text-ink">
             Services
           </Link>
+          <Link href="/playground" className="hover:text-ink">
+            Playground
+          </Link>
+          <Link href="/agents" className="hover:text-ink">
+            For agents
+          </Link>
           <Link href="/register" className="hover:text-ink">
             Register
           </Link>
