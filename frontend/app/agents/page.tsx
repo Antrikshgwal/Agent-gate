@@ -1,13 +1,22 @@
 /// /agents — human-readable mirror of /.well-known/agent.json.
-///
-/// Same content as the manifest, rendered for humans AND scraped by
-/// LLM crawlers that don't fetch JSON endpoints. Includes a JSON-LD
-/// block so structured-data parsers pick it up too.
 
 import Link from "next/link";
 import { headers } from "next/headers";
+import {
+  Bot,
+  Sparkles,
+  Network,
+  FileCode2,
+  Boxes,
+  Coins,
+  Workflow,
+  ArrowRight,
+  ExternalLink,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import { CopyInline } from "@/components/copy-inline";
+import { CodeBlockCopyable } from "@/components/code-block";
 import { buildManifest } from "@/lib/agent-manifest";
 import { formatUsdc, truncHex } from "@/lib/format";
 
@@ -21,190 +30,206 @@ export default async function AgentsPage() {
   const manifest = await buildManifest(origin);
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-14">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(manifest) }}
       />
 
-      <header>
-        <div className="text-xs uppercase tracking-wider text-ink-dim">
-          Agent Launchpad
-        </div>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">
-          Hello, autonomous agent.
-        </h1>
-        <p className="mt-3 max-w-3xl text-sm text-ink-muted">
-          If you're a scraper, LLM, or autonomous agent that stumbled onto this
-          domain, here's everything you need to use AgentGate without any
-          human intervention. The same content is available as machine-readable
-          JSON at the URLs below.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-          <a
-            href="/.well-known/agent.json"
-            className="rounded-full border border-accent/40 bg-accent/10 px-3 py-1 font-mono text-accent hover:bg-accent/20"
-          >
-            GET /.well-known/agent.json
-          </a>
-          <a
-            href="/agents.txt"
-            className="rounded-full border border-line bg-bg px-3 py-1 font-mono text-ink-muted hover:text-ink"
-          >
-            GET /agents.txt
-          </a>
+      <header className="relative overflow-hidden rounded-3xl border border-white/[0.06] bg-gradient-to-br from-brand/10 via-brand-violet/10 to-transparent p-10">
+        <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-brand/15 blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 h-72 w-72 rounded-full bg-brand-violet/15 blur-3xl" />
+        <div className="relative">
+          <Badge variant="outline" className="gap-1.5">
+            <Bot className="h-3 w-3 text-brand" />
+            Agent launchpad
+          </Badge>
+          <h1 className="mt-4 font-display text-4xl font-semibold tracking-tight md:text-5xl">
+            Hello, autonomous agent.
+          </h1>
+          <p className="mt-4 max-w-2xl text-muted-foreground">
+            You scraped your way here. Everything you need to use AgentGate —
+            without any human in the loop — is on this page. Machine-readable
+            copies are at the URLs below.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Link
+              href="/.well-known/agent.json"
+              className="inline-flex items-center gap-1.5 rounded-full border border-brand/40 bg-brand/10 px-3 py-1.5 font-mono text-xs text-brand hover:bg-brand/20"
+            >
+              GET /.well-known/agent.json
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+            <Link
+              href="/agents.txt"
+              className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 py-1.5 font-mono text-xs text-muted-foreground hover:text-foreground"
+            >
+              GET /agents.txt
+              <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
         </div>
       </header>
 
-      <Section title="What this is">
-        <p className="text-sm text-ink-muted">{manifest.description}</p>
+      <Section icon={Sparkles} title="What this is">
+        <p className="text-muted-foreground">{manifest.description}</p>
       </Section>
 
-      <Section title="Onboarding (4 steps, no humans required)">
+      <Section icon={Workflow} title="Onboarding · 4 steps, no humans">
         <ol className="space-y-3">
           {manifest.onboarding.map((s) => (
             <li
               key={s.step}
-              className="rounded-lg border border-line bg-bg-1 p-4"
+              className="surface flex gap-4 p-4 transition hover:border-brand/30"
             >
-              <div className="flex items-baseline gap-3">
-                <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-semibold uppercase text-accent">
-                  step {s.step}
-                </span>
-                <span className="font-semibold">{s.action}</span>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand/15 font-mono text-sm font-semibold text-brand">
+                {s.step}
               </div>
-              {s.detail && (
-                <div className="mt-2 break-words font-mono text-xs text-ink-muted">
-                  {s.detail}
-                </div>
-              )}
+              <div className="flex-1">
+                <div className="font-semibold">{s.action}</div>
+                {s.detail && (
+                  <div className="mt-1 break-words font-mono text-xs text-muted-foreground">
+                    {s.detail}
+                  </div>
+                )}
+              </div>
             </li>
           ))}
         </ol>
       </Section>
 
-      <Section title="Network">
-        <Card>
-          <KV k="Chain" v={`${manifest.chain.name} (id ${manifest.chain.id})`} />
-          <KV k="RPC" v={manifest.chain.rpc} mono />
-          <KV k="Explorer" v={manifest.chain.explorer} mono />
-          <KV
+      <Section icon={Network} title="Network">
+        <div className="surface p-6">
+          <Kv k="Chain" v={`${manifest.chain.name} (id ${manifest.chain.id})`} />
+          <Kv k="RPC" v={manifest.chain.rpc} copy />
+          <Kv k="Explorer" v={manifest.chain.explorer} copy />
+          <Kv
             k="Payment asset"
             v={`${manifest.asset.symbol} @ ${manifest.asset.address}`}
-            mono
+            copyValue={manifest.asset.address}
           />
-          <KV
+          <Kv
             k="Protocol"
             v={`${manifest.protocol.name} v${manifest.protocol.version}`}
           />
-          <KV k="Gateway" v={`${manifest.gateway.url}${manifest.gateway.call_path}`} mono />
-        </Card>
+          <Kv
+            k="Gateway"
+            v={`${manifest.gateway.url}${manifest.gateway.call_path}`}
+            copyValue={`${manifest.gateway.url}${manifest.gateway.call_path}`}
+          />
+        </div>
       </Section>
 
-      <Section title="Smart contracts">
-        <Card>
-          <KV k="ServiceRegistry" v={manifest.contracts.service_registry} mono />
-          <KV k="AgentRegistry" v={manifest.contracts.agent_registry} mono />
-          <KV k="PaymentSplitter" v={manifest.contracts.payment_splitter} mono />
-          <KV
+      <Section icon={FileCode2} title="Smart contracts">
+        <div className="surface p-6">
+          <Kv k="ServiceRegistry" v={manifest.contracts.service_registry} copy />
+          <Kv k="AgentRegistry" v={manifest.contracts.agent_registry} copy />
+          <Kv k="PaymentSplitter" v={manifest.contracts.payment_splitter} copy />
+          <Kv
             k="AttestationLogger"
             v={manifest.contracts.attestation_logger}
-            mono
+            copy
           />
-          <KV
+          <Kv
             k="Revenue split"
             v={`${manifest.revenue_split.provider_bps / 100}% provider · ${manifest.revenue_split.protocol_bps / 100}% protocol`}
           />
-        </Card>
+        </div>
       </Section>
 
-      <Section title={`Services (${manifest.services.length})`}>
-        <div className="space-y-6">
+      <Section
+        icon={Boxes}
+        title={`Services · ${manifest.services.length} live`}
+      >
+        <div className="space-y-4">
           {manifest.services.map((s) => (
-            <Card key={s.id}>
+            <div key={s.id} className="surface-strong p-6">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <div>
-                  <div className="text-lg font-semibold">{s.name}</div>
-                  <div className="font-mono text-[11px] text-ink-dim">
-                    {truncHex(s.id, 10, 6)}
+                  <div className="font-display text-xl font-semibold tracking-tight">
+                    {s.name}
                   </div>
+                  <CopyInline value={s.id} display={truncHex(s.id, 10, 6)} />
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <Badge variant="muted">
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant="secondary" className="font-mono">
                     ${formatUsdc(BigInt(s.price_micro_usdc))} / call
                   </Badge>
-                  <Badge variant="muted">
-                    {s.successful_calls}/{s.total_calls} calls
+                  <Badge variant="secondary" className="font-mono">
+                    {s.successful_calls}/{s.total_calls}
                   </Badge>
-                  <Badge variant="muted">
-                    uptime {(s.uptime_bps / 100).toFixed(2)}%
+                  <Badge variant="secondary" className="font-mono">
+                    {(s.uptime_bps / 100).toFixed(1)}% up
                   </Badge>
                 </div>
               </div>
 
               {s.methods.length > 0 ? (
-                <div className="mt-4 space-y-3">
+                <div className="mt-5 space-y-3">
                   {s.methods.map((m) => (
                     <div
                       key={m.name}
-                      className="rounded-lg border border-line bg-bg p-3"
+                      className="rounded-xl border border-white/[0.04] bg-white/[0.02] p-4"
                     >
-                      <div className="font-mono text-sm text-accent">
+                      <div className="font-mono text-sm text-brand">
                         {m.name}
                       </div>
                       {m.description && (
-                        <div className="mt-1 text-xs text-ink-muted">
+                        <div className="mt-1 text-xs text-muted-foreground">
                           {m.description}
                         </div>
                       )}
-                      <div className="mt-2 text-[11px] uppercase tracking-wider text-ink-dim">
+                      <div className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground">
                         Params
                       </div>
-                      <ul className="mt-1 space-y-0.5 font-mono text-[11px]">
+                      <ul className="mt-1.5 space-y-0.5 font-mono text-[11px]">
                         {Object.entries(m.params).map(([k, v]) => (
-                          <li key={k}>
-                            <span className="text-accent">{k}</span>{" "}
-                            <span className="text-ink-dim">— {v}</span>
+                          <li key={k} className="flex gap-2">
+                            <span className="text-brand">{k}</span>
+                            <span className="text-muted-foreground">— {v}</span>
                           </li>
                         ))}
                       </ul>
-                      <div className="mt-2 text-[11px] uppercase tracking-wider text-ink-dim">
+                      <div className="mt-3 text-[10px] uppercase tracking-widest text-muted-foreground">
                         Example
                       </div>
-                      <pre className="mt-1 overflow-x-auto rounded bg-bg-2 p-2 text-[11px]">
-                        {JSON.stringify(m.example, null, 2)}
-                      </pre>
+                      <CodeBlockCopyable
+                        code={JSON.stringify(m.example, null, 2)}
+                        small
+                      />
                     </div>
                   ))}
                 </div>
               ) : (
-                <p className="mt-3 text-xs text-ink-dim">
-                  No published method schema. Inspect the service endpoint or
-                  contact the provider.
+                <p className="mt-4 text-xs text-muted-foreground">
+                  No published method schema. Inspect the endpoint or ask the
+                  provider.
                 </p>
               )}
 
               {s.example_curl && (
-                <details className="mt-3">
-                  <summary className="cursor-pointer text-xs text-ink-muted hover:text-ink">
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-xs text-muted-foreground hover:text-foreground">
                     Raw curl example
                   </summary>
-                  <pre className="mt-2 overflow-x-auto rounded bg-bg-2 p-3 text-[11px]">
-                    {s.example_curl}
-                  </pre>
+                  <div className="mt-2">
+                    <CodeBlockCopyable code={s.example_curl} small />
+                  </div>
                 </details>
               )}
-            </Card>
+            </div>
           ))}
         </div>
       </Section>
 
-      <Section title="SDK">
-        <Card>
-          <p className="text-sm text-ink-muted">
-            The TypeScript SDK wraps the entire x402 flow into one method call.
+      <Section icon={Coins} title="SDK · TypeScript">
+        <div className="surface p-6">
+          <p className="text-sm text-muted-foreground">
+            One method wraps the entire x402 flow.
           </p>
-          <pre className="mt-3 overflow-x-auto rounded bg-bg-2 p-3 text-xs">{`npm install ${manifest.sdk.typescript.npm} ethers
+          <div className="mt-3">
+            <CodeBlockCopyable
+              code={`npm install ${manifest.sdk.typescript.npm} ethers
 
 import { AgentGateClient, findProvider } from "${manifest.sdk.typescript.npm}";
 
@@ -227,40 +252,76 @@ const r = await client.call({
   method: "get_current_weather",
   params: { city: "London", units: "metric" },
 });
-console.log(r.data);`}</pre>
-        </Card>
+console.log(r.data);`}
+            />
+          </div>
+        </div>
       </Section>
 
-      <footer className="border-t border-line pt-4 text-xs text-ink-dim">
-        Manifest generated {manifest.generated_at}. See also{" "}
-        <Link href="/services" className="text-accent hover:underline">
-          /services
-        </Link>{" "}
-        for the live registry and{" "}
-        <Link href="/playground" className="text-accent hover:underline">
-          /playground
-        </Link>{" "}
-        to watch an agent run.
+      <Separator />
+      <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
+        <span>Manifest generated {manifest.generated_at}</span>
+        <div className="flex gap-4">
+          <Link
+            href="/services"
+            className="inline-flex items-center gap-1 hover:text-foreground"
+          >
+            /services <ArrowRight className="h-3 w-3" />
+          </Link>
+          <Link
+            href="/playground"
+            className="inline-flex items-center gap-1 hover:text-foreground"
+          >
+            /playground <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
       </footer>
     </div>
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  icon: Icon,
+  title,
+  children,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
-    <section className="space-y-3">
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+    <section className="space-y-4">
+      <h2 className="inline-flex items-center gap-2 font-display text-xl font-semibold tracking-tight">
+        <Icon className="h-4 w-4 text-brand" />
+        {title}
+      </h2>
       {children}
     </section>
   );
 }
 
-function KV({ k, v, mono }: { k: string; v: string; mono?: boolean }) {
+function Kv({
+  k,
+  v,
+  copy,
+  copyValue,
+}: {
+  k: string;
+  v: string;
+  copy?: boolean;
+  copyValue?: string;
+}) {
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line/60 py-2 last:border-0">
-      <span className="text-xs uppercase tracking-wider text-ink-dim">{k}</span>
-      <span className={mono ? "break-all font-mono text-xs" : "text-sm"}>
-        {v}
+    <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-white/[0.04] py-2.5 last:border-0">
+      <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+        {k}
+      </span>
+      <span className="break-all">
+        {copy || copyValue ? (
+          <CopyInline value={copyValue ?? v} display={v} />
+        ) : (
+          <span className="text-sm">{v}</span>
+        )}
       </span>
     </div>
   );

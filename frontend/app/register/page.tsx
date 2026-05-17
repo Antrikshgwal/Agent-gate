@@ -4,21 +4,35 @@ import { useState } from "react";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
 import { parseUnits, type Address } from "viem";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { Card, CardHeader } from "@/components/ui/card";
+import { motion } from "framer-motion";
+import {
+  Sparkles,
+  Wallet,
+  CheckCircle2,
+  Loader2,
+  ExternalLink,
+  ArrowRight,
+  ShieldAlert,
+} from "lucide-react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { HashLink } from "@/components/ui/hash";
 import { serviceRegistry, usdc } from "@/lib/contracts";
 import { env } from "@/lib/env";
-import { explorerTx, formatUsdc, truncHex } from "@/lib/format";
+import { explorerTx, formatUsdc } from "@/lib/format";
 
 interface FormState {
   name: string;
   endpoint: string;
-  price: string; // USDC, decimal
-  stake: string; // USDC, decimal
+  price: string;
+  stake: string;
   maxLatencyMs: string;
-  minUptimePct: string; // 0–100
-  penaltyPerViolation: string; // USDC, decimal
+  minUptimePct: string;
+  penaltyPerViolation: string;
 }
 
 const INITIAL: FormState = {
@@ -34,17 +48,17 @@ const INITIAL: FormState = {
 export default function RegisterPage() {
   const { address, isConnected } = useAccount();
   const [form, setForm] = useState<FormState>(INITIAL);
-  const [step, setStep] = useState<"idle" | "approving" | "registering" | "done">("idle");
+  const [step, setStep] = useState<"idle" | "approving" | "registering" | "done">(
+    "idle",
+  );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [approveHash, setApproveHash] = useState<`0x${string}` | null>(null);
   const [registerHash, setRegisterHash] = useState<`0x${string}` | null>(null);
 
-  // Read MIN_STAKE so we can show it inline and validate.
   const { data: minStake } = useReadContract({
     ...serviceRegistry,
     functionName: "MIN_STAKE",
   });
-  // Read user's USDC balance + current allowance to the registry.
   const { data: balance } = useReadContract({
     ...usdc,
     functionName: "balanceOf",
@@ -67,11 +81,7 @@ export default function RegisterPage() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErrorMsg(null);
-
-    if (!address) {
-      setErrorMsg("Connect a wallet first.");
-      return;
-    }
+    if (!address) return setErrorMsg("Connect a wallet first.");
 
     let priceWei: bigint;
     let stakeWei: bigint;
@@ -81,45 +91,47 @@ export default function RegisterPage() {
       stakeWei = parseUnits(form.stake, 6);
       penaltyWei = parseUnits(form.penaltyPerViolation, 6);
     } catch {
-      setErrorMsg("Price/stake/penalty must be valid decimal numbers.");
-      return;
+      return setErrorMsg("Price/stake/penalty must be valid decimals.");
     }
 
     if (minStake !== undefined && stakeWei < (minStake as bigint)) {
-      setErrorMsg(
+      return setErrorMsg(
         `Stake must be at least $${formatUsdc(minStake as bigint)} USDC.`,
       );
-      return;
     }
     if (balance !== undefined && (balance as bigint) < stakeWei) {
-      setErrorMsg(
-        `Your wallet only holds $${formatUsdc(balance as bigint)} USDC; you need $${form.stake}.`,
+      return setErrorMsg(
+        `Wallet holds $${formatUsdc(balance as bigint)} USDC; need $${form.stake}.`,
       );
-      return;
     }
 
     const minUptimeBps = Math.round(Number(form.minUptimePct) * 100);
-    const sla = {
-      maxLatencyMs: BigInt(form.maxLatencyMs),
-      minUptimePercent: BigInt(minUptimeBps),
-      penaltyPerViolation: penaltyWei,
-    } as const;
+    const sla = [
+      BigInt(form.maxLatencyMs),
+      BigInt(minUptimeBps),
+      penaltyWei,
+    ] as const;
 
     try {
-      // Step 1: approve if allowance is short.
       const needAllowance = (allowance as bigint | undefined) ?? 0n;
       if (needAllowance < stakeWei) {
         setStep("approving");
+        toast.message("Approve USDC", {
+          description: "Sign the allowance in your wallet",
+        });
         const tx = await writeContractAsync({
           ...usdc,
           functionName: "approve",
           args: [serviceRegistry.address, stakeWei],
         });
         setApproveHash(tx);
+        toast.success("Approval sent", { description: tx.slice(0, 10) + "…" });
       }
 
-      // Step 2: registerService.
       setStep("registering");
+      toast.message("Registering on-chain", {
+        description: "Sign the registerService tx",
+      });
       const tx = await writeContractAsync({
         ...serviceRegistry,
         functionName: "registerService",
@@ -129,7 +141,7 @@ export default function RegisterPage() {
           "0x0000000000000000000000000000000000000000000000000000000000000000",
           priceWei,
           stakeWei,
-          [sla.maxLatencyMs, sla.minUptimePercent, sla.penaltyPerViolation] as unknown as {
+          sla as unknown as {
             maxLatencyMs: bigint;
             minUptimePercent: bigint;
             penaltyPerViolation: bigint;
@@ -138,70 +150,122 @@ export default function RegisterPage() {
       });
       setRegisterHash(tx);
       setStep("done");
+      toast.success("Service registered", { description: "Live in /services" });
     } catch (err) {
-      setErrorMsg(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      setErrorMsg(msg);
+      toast.error("Failed", { description: msg });
       setStep("idle");
     }
   }
 
   return (
-    <div className="space-y-8">
-      <header>
-        <div className="text-xs uppercase tracking-wider text-ink-dim">Service registration</div>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">List your service on AgentGate</h1>
-        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-          Stake USDC on-chain, set your price, and your service becomes
-          discoverable to every AgentGate agent. The stake is at risk of slashing
-          if the SLA is violated.
+    <div className="space-y-10">
+      <header className="space-y-4">
+        <Badge variant="outline" className="gap-1.5">
+          <Sparkles className="h-3 w-3 text-brand" />
+          Provider onboarding
+        </Badge>
+        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
+          List your service.{" "}
+          <span className="text-gradient">Take 95% of every call.</span>
+        </h1>
+        <p className="max-w-2xl text-muted-foreground">
+          Stake USDC, set your price, and you&apos;re live. Stake is at risk if
+          the SLA is violated — that&apos;s the reputation guarantee.
         </p>
       </header>
 
       {!isConnected ? (
-        <Card>
-          <CardHeader>Connect a wallet to continue</CardHeader>
-          <p className="mb-4 text-sm text-ink-muted">
-            Registration is an on-chain transaction (USDC approve + registerService).
-            Connect a Kite-funded wallet to proceed.
+        <div className="surface-strong relative overflow-hidden p-10">
+          <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-brand/15 blur-3xl" />
+          <Wallet className="h-8 w-8 text-brand" />
+          <h2 className="mt-4 font-display text-2xl font-semibold tracking-tight">
+            Connect a wallet to register
+          </h2>
+          <p className="mt-2 max-w-md text-sm text-muted-foreground">
+            Registration is two on-chain transactions: USDC approve, then
+            registerService. Use a wallet funded on Kite testnet.
           </p>
-          <ConnectButton />
-        </Card>
+          <div className="mt-6">
+            <ConnectButton />
+          </div>
+        </div>
+      ) : step === "done" ? (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="surface-strong relative overflow-hidden p-12 text-center"
+        >
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-brand/10" />
+          <div className="relative">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.1, type: "spring" }}
+              className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15"
+            >
+              <CheckCircle2 className="h-8 w-8 text-emerald-400" />
+            </motion.div>
+            <h2 className="mt-6 font-display text-3xl font-semibold tracking-tight">
+              You&apos;re live.
+            </h2>
+            <p className="mt-2 text-muted-foreground">
+              <span className="text-foreground">{form.name}</span> is now
+              discoverable to every AgentGate agent.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+              <Button asChild>
+                <a href="/services">
+                  View it in the directory
+                  <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                </a>
+              </Button>
+              {registerHash && (
+                <Button asChild variant="outline">
+                  <a
+                    href={explorerTx(registerHash)}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Tx on Kitescan
+                    <ExternalLink className="ml-1 h-3.5 w-3.5" />
+                  </a>
+                </Button>
+              )}
+            </div>
+          </div>
+        </motion.div>
       ) : (
-        <form onSubmit={onSubmit} className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <Card className="md:col-span-2">
-            <CardHeader>Service</CardHeader>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <form onSubmit={onSubmit} className="space-y-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            <FieldCard title="Service" subtitle="What are you reselling?">
               <Field
                 label="Name"
-                hint="Must match a gateway-registered adapter exactly, e.g. 'OpenWeather'."
+                hint="Must match a gateway-registered adapter (e.g. 'OpenWeather')."
               >
-                <input
+                <Input
                   required
-                  className="input"
                   value={form.name}
                   onChange={(e) => set("name", e.target.value)}
                   placeholder="OpenWeather"
                 />
               </Field>
               <Field label="Endpoint URL" hint="Base URL the gateway forwards to.">
-                <input
+                <Input
                   required
-                  className="input"
                   type="url"
                   value={form.endpoint}
                   onChange={(e) => set("endpoint", e.target.value)}
                   placeholder="https://api.openweathermap.org"
                 />
               </Field>
-            </div>
-          </Card>
+            </FieldCard>
 
-          <Card>
-            <CardHeader>Pricing</CardHeader>
-            <div className="space-y-4">
-              <Field label="Price per call (USDC)" hint="Charged to the agent per call.">
-                <input
+            <FieldCard title="Pricing" subtitle="What does a call cost?">
+              <Field label="Price per call (USDC)">
+                <Input
                   required
-                  className="input"
                   type="number"
                   step="0.0001"
                   min="0"
@@ -213,13 +277,12 @@ export default function RegisterPage() {
                 label="Reputation stake (USDC)"
                 hint={
                   minStake !== undefined
-                    ? `Minimum: $${formatUsdc(minStake as bigint)}.`
-                    : "Loading min stake…"
+                    ? `Minimum: $${formatUsdc(minStake as bigint)}`
+                    : "Loading…"
                 }
               >
-                <input
+                <Input
                   required
-                  className="input"
                   type="number"
                   step="1"
                   min="100"
@@ -228,30 +291,30 @@ export default function RegisterPage() {
                 />
               </Field>
               {balance !== undefined && (
-                <div className="text-xs text-ink-dim">
-                  Wallet balance: ${formatUsdc(balance as bigint)} USDC
+                <div className="text-xs text-muted-foreground">
+                  Wallet: ${formatUsdc(balance as bigint)} USDC
                 </div>
               )}
-            </div>
-          </Card>
+            </FieldCard>
+          </div>
 
-          <Card>
-            <CardHeader>SLA</CardHeader>
-            <div className="space-y-4">
+          <FieldCard title="SLA" subtitle="What are you promising?">
+            <div className="grid gap-4 md:grid-cols-3">
               <Field label="Max latency (ms)">
-                <input
+                <Input
                   required
-                  className="input"
                   type="number"
                   min="1"
                   value={form.maxLatencyMs}
                   onChange={(e) => set("maxLatencyMs", e.target.value)}
                 />
               </Field>
-              <Field label="Min uptime (%)" hint="e.g. 99.9 — stored as basis points × 100 on chain.">
-                <input
+              <Field
+                label="Min uptime (%)"
+                hint="Stored as basis points × 100 on chain."
+              >
+                <Input
                   required
-                  className="input"
                   type="number"
                   step="0.01"
                   min="0"
@@ -260,10 +323,9 @@ export default function RegisterPage() {
                   onChange={(e) => set("minUptimePct", e.target.value)}
                 />
               </Field>
-              <Field label="Slash per violation (USDC)">
-                <input
+              <Field label="Slash / violation (USDC)">
+                <Input
                   required
-                  className="input"
                   type="number"
                   step="0.01"
                   min="0"
@@ -272,84 +334,88 @@ export default function RegisterPage() {
                 />
               </Field>
             </div>
-          </Card>
+          </FieldCard>
 
-          <Card className="md:col-span-2">
-            {errorMsg && (
-              <div className="mb-4 rounded-md border border-bad/30 bg-bad/10 px-3 py-2 text-xs text-bad">
-                {errorMsg}
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="text-xs text-ink-muted">
-                Signed-in as <HashLink value={address!} kind="address" /> · chain{" "}
-                {env.chainId}
-              </div>
-              <button
-                type="submit"
-                disabled={step === "approving" || step === "registering"}
-                className="rounded-md bg-accent px-5 py-2 text-sm font-medium text-bg transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {step === "approving"
-                  ? "Approving USDC…"
-                  : step === "registering"
-                    ? "Registering on-chain…"
-                    : "Register service"}
-              </button>
+          {errorMsg && (
+            <div className="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
+              <ShieldAlert className="mt-0.5 h-4 w-4 text-destructive" />
+              <p className="text-sm text-destructive">{errorMsg}</p>
             </div>
+          )}
 
-            {(approveHash || registerHash) && (
-              <div className="mt-4 space-y-2 text-xs text-ink-muted">
-                {approveHash && (
-                  <div>
-                    Approval tx: <HashLink value={approveHash} kind="tx" />
-                  </div>
-                )}
-                {registerHash && (
-                  <div>
-                    Registration tx: <HashLink value={registerHash} kind="tx" />
-                  </div>
-                )}
-                {step === "done" && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <Badge variant="success">success</Badge>
-                    <span>Service registered. It will appear in the directory shortly.</span>
-                    <a
-                      className="text-accent underline-offset-4 hover:underline"
-                      href={registerHash ? explorerTx(registerHash) : "#"}
-                      target="_blank"
-                      rel="noreferrer noopener"
-                    >
-                      View on Kitescan ↗
-                    </a>
-                  </div>
-                )}
-              </div>
-            )}
-          </Card>
+          <div className="surface flex flex-wrap items-center justify-between gap-4 p-4">
+            <div className="text-xs text-muted-foreground">
+              Signed in as <HashLink value={address!} kind="address" /> · chain{" "}
+              {env.chainId}
+            </div>
+            <Button
+              type="submit"
+              size="lg"
+              disabled={step === "approving" || step === "registering"}
+            >
+              {step === "approving" ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Approving…
+                </>
+              ) : step === "registering" ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Registering…
+                </>
+              ) : (
+                "Register service"
+              )}
+            </Button>
+          </div>
+
+          {(approveHash || registerHash) && (
+            <div className="surface space-y-2 p-4 text-xs text-muted-foreground">
+              {approveHash && (
+                <div>
+                  Approval tx: <HashLink value={approveHash} kind="tx" />
+                </div>
+              )}
+              {registerHash && (
+                <div>
+                  Registration tx: <HashLink value={registerHash} kind="tx" />
+                </div>
+              )}
+            </div>
+          )}
         </form>
       )}
 
-      <style>{`
-        .input {
-          width: 100%;
-          background: #0a0a0b;
-          border: 1px solid #1f1f23;
-          border-radius: 0.5rem;
-          padding: 0.5rem 0.75rem;
-          color: #f4f4f5;
-          font-size: 0.875rem;
-        }
-        .input:focus {
-          outline: none;
-          border-color: rgba(52, 225, 255, 0.5);
-          box-shadow: 0 0 0 3px rgba(52, 225, 255, 0.1);
-        }
-      `}</style>
+      <Separator />
+      <p className="text-center text-xs text-muted-foreground">
+        Need help? Read the{" "}
+        <a href="/agents" className="text-brand hover:underline">
+          agent manifest
+        </a>{" "}
+        for full contract details.
+      </p>
+    </div>
+  );
+}
 
-      {/* Unused import guard for explorerTx in jsx context */}
-      <noscript>{truncHex("0x0")}</noscript>
+function FieldCard({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="surface-strong space-y-4 p-6">
+      <div>
+        <h3 className="font-display text-lg font-semibold tracking-tight">
+          {title}
+        </h3>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
+      </div>
+      <div className="space-y-4">{children}</div>
     </div>
   );
 }
@@ -364,10 +430,12 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block">
-      <span className="text-xs uppercase tracking-wider text-ink-dim">{label}</span>
-      <div className="mt-1">{children}</div>
-      {hint && <p className="mt-1 text-[11px] text-ink-dim">{hint}</p>}
-    </label>
+    <div className="space-y-1.5">
+      <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">
+        {label}
+      </Label>
+      {children}
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
+    </div>
   );
 }

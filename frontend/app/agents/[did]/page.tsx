@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft, Activity, Coins, Calendar, Award } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardHeader, CardValue, CardSub } from "@/components/ui/card";
+import { StatCard } from "@/components/stat-card";
 import { HashLink } from "@/components/ui/hash";
 import {
   getAgent,
@@ -31,123 +32,149 @@ export default async function AgentProfilePage({
   if (!agent) notFound();
 
   const total = agent.successfulCalls + agent.failedCalls;
-  const successRate = total === 0n ? 0 : Number((agent.successfulCalls * 10000n) / total) / 100;
+  const successRate =
+    total === 0n ? 0 : Number((agent.successfulCalls * 10000n) / total) / 100;
   const days = ageDays(Number(agent.createdAt));
 
-  // Reputation breakdown using the same constants the contract uses.
-  const REP = { successMax: 700, ageMax: 200, volumeMax: 100, ageCapDays: 60, volumeCap: 1000n * 10n ** 6n };
-  const successPts = total === 0n ? 500 : Math.floor(Number((agent.successfulCalls * BigInt(REP.successMax)) / total));
-  const agePts = days > REP.ageCapDays ? REP.ageMax : Math.floor((days * REP.ageMax) / REP.ageCapDays);
-  const volumePts = agent.totalSpent > REP.volumeCap
-    ? REP.volumeMax
-    : Math.floor(Number((agent.totalSpent * BigInt(REP.volumeMax)) / REP.volumeCap));
+  const REP = {
+    successMax: 700,
+    ageMax: 200,
+    volumeMax: 100,
+    ageCapDays: 60,
+    volumeCap: 1000n * 10n ** 6n,
+  };
+  const successPts =
+    total === 0n
+      ? 500
+      : Math.floor(Number((agent.successfulCalls * BigInt(REP.successMax)) / total));
+  const agePts =
+    days > REP.ageCapDays ? REP.ageMax : Math.floor((days * REP.ageMax) / REP.ageCapDays);
+  const volumePts =
+    agent.totalSpent > REP.volumeCap
+      ? REP.volumeMax
+      : Math.floor(Number((agent.totalSpent * BigInt(REP.volumeMax)) / REP.volumeCap));
 
   const serviceById = new Map(services.map((s) => [s.id, s]));
+  const rep = Number(agent.reputationScore);
+  const tier =
+    rep >= 750 ? "Excellent" : rep >= 500 ? "Good" : rep >= 250 ? "Fair" : "Building";
 
   return (
     <div className="space-y-10">
-      <header>
-        <Link href="/" className="text-xs text-ink-dim hover:text-ink">
-          ← home
+      <div>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-3 w-3" />
+          home
         </Link>
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
           <div className="min-w-0">
-            <div className="text-xs uppercase tracking-wider text-ink-dim">Agent</div>
-            <h1 className="mt-1 break-all font-mono text-sm text-ink md:text-base">
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Agent
+            </div>
+            <h1 className="mt-1 break-all font-mono text-sm md:text-base">
               {agent.did}
             </h1>
-            <div className="mt-2 text-xs text-ink-muted">
+            <div className="mt-2 text-xs text-muted-foreground">
               owned by <HashLink value={agent.owner} kind="address" /> · joined{" "}
               {relativeTime(Number(agent.createdAt))}
             </div>
           </div>
           {agent.isActive ? (
-            <Badge variant="success">active</Badge>
+            <Badge className="bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/20">
+              active
+            </Badge>
           ) : (
-            <Badge variant="muted">inactive</Badge>
+            <Badge variant="secondary">inactive</Badge>
           )}
         </div>
-      </header>
+      </div>
 
-      {/* Reputation panel */}
-      <section>
-        <Card className="bg-gradient-to-br from-bg-1 to-bg-2">
-          <div className="flex flex-wrap items-end justify-between gap-6">
-            <div>
-              <CardHeader>Reputation</CardHeader>
-              <div className="flex items-baseline gap-3">
-                <span className="text-6xl font-semibold tracking-tight text-accent">
-                  {Number(agent.reputationScore)}
-                </span>
-                <span className="text-lg text-ink-dim">/ 1000</span>
-              </div>
-              <CardSub>
-                {Number(agent.reputationScore) >= 750
-                  ? "Excellent"
-                  : Number(agent.reputationScore) >= 500
-                    ? "Good"
-                    : Number(agent.reputationScore) >= 250
-                      ? "Fair"
-                      : "Building"}
-              </CardSub>
+      <section className="surface-strong relative overflow-hidden p-8">
+        <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-brand/15 blur-3xl" />
+        <div className="relative flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">
+              Reputation
             </div>
-            <div className="grid grow grid-cols-3 gap-3 text-xs md:max-w-md">
-              <RepStat label="Success rate" pts={successPts} max={REP.successMax} />
-              <RepStat label="Account age" pts={agePts} max={REP.ageMax} />
-              <RepStat label="Volume" pts={volumePts} max={REP.volumeMax} />
+            <div className="flex items-baseline gap-3">
+              <span className="font-display text-6xl font-semibold tracking-tight text-gradient">
+                {rep}
+              </span>
+              <span className="text-lg text-muted-foreground">/ 1000</span>
+            </div>
+            <div className="mt-1 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Award className="h-3 w-3 text-brand" />
+              {tier}
             </div>
           </div>
-        </Card>
+          <div className="grid grow grid-cols-3 gap-4 text-xs md:max-w-md">
+            <RepStat label="Success" pts={successPts} max={REP.successMax} />
+            <RepStat label="Age" pts={agePts} max={REP.ageMax} />
+            <RepStat label="Volume" pts={volumePts} max={REP.volumeMax} />
+          </div>
+        </div>
       </section>
 
-      {/* Stat cards */}
       <section className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        <Card>
-          <CardHeader>Total spent</CardHeader>
-          <CardValue>${formatUsdc(agent.totalSpent)}</CardValue>
-        </Card>
-        <Card>
-          <CardHeader>Success rate</CardHeader>
-          <CardValue>{successRate.toFixed(1)}%</CardValue>
-          <CardSub>
-            {agent.successfulCalls.toString()}/{total.toString()} calls
-          </CardSub>
-        </Card>
-        <Card>
-          <CardHeader>Failed calls</CardHeader>
-          <CardValue>{agent.failedCalls.toString()}</CardValue>
-        </Card>
-        <Card>
-          <CardHeader>Account age</CardHeader>
-          <CardValue>{days}d</CardValue>
-        </Card>
+        <StatCard
+          label="Total spent"
+          value={`$${formatUsdc(agent.totalSpent)}`}
+          icon={<Coins className="h-4 w-4" />}
+          accent="brand"
+        />
+        <StatCard
+          label="Success rate"
+          value={`${successRate.toFixed(1)}%`}
+          sub={`${agent.successfulCalls.toString()}/${total.toString()} calls`}
+          icon={<Activity className="h-4 w-4" />}
+          accent="violet"
+          delay={0.05}
+        />
+        <StatCard
+          label="Failed calls"
+          value={agent.failedCalls.toString()}
+          icon={<Activity className="h-4 w-4" />}
+          accent="pink"
+          delay={0.1}
+        />
+        <StatCard
+          label="Account age"
+          value={`${days}d`}
+          icon={<Calendar className="h-4 w-4" />}
+          accent="brand"
+          delay={0.15}
+        />
       </section>
 
-      {/* Attestations */}
       <section>
-        <h2 className="mb-3 text-xs uppercase tracking-wider text-ink-dim">
+        <h2 className="mb-4 text-[11px] uppercase tracking-widest text-muted-foreground">
           Recent x402 payments
         </h2>
         {attestations.length === 0 ? (
-          <Card className="text-center text-ink-muted">No attestations yet.</Card>
+          <div className="surface py-10 text-center text-sm text-muted-foreground">
+            No attestations yet.
+          </div>
         ) : (
-          <Card className="p-0 overflow-hidden">
+          <div className="surface overflow-hidden p-0">
             <table className="w-full text-sm">
-              <thead className="border-b border-line bg-bg-2 text-left text-[11px] uppercase tracking-wider text-ink-dim">
+              <thead className="border-b border-white/[0.06] bg-white/[0.02] text-left text-[10px] uppercase tracking-widest text-muted-foreground">
                 <tr>
                   <th className="px-4 py-3 font-medium">When</th>
                   <th className="px-4 py-3 font-medium">Service</th>
                   <th className="px-4 py-3 font-medium">Amount</th>
                   <th className="px-4 py-3 font-medium">Status</th>
                   <th className="px-4 py-3 font-medium">Latency</th>
-                  <th className="px-4 py-3 font-medium">Payment tx</th>
+                  <th className="px-4 py-3 font-medium">Tx</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-line">
+              <tbody className="divide-y divide-white/[0.04]">
                 {attestations.map((a, i) => {
                   const svc = serviceById.get(a.serviceId);
                   return (
-                    <tr key={i} className="text-ink-muted">
+                    <tr key={i} className="text-muted-foreground transition hover:bg-white/[0.02]">
                       <td className="px-4 py-3 text-xs">
                         {relativeTime(Number(a.timestamp))}
                       </td>
@@ -155,27 +182,31 @@ export default async function AgentProfilePage({
                         {svc ? (
                           <Link
                             href={`/services/${a.serviceId}`}
-                            className="text-ink hover:text-accent"
+                            className="text-foreground hover:text-brand"
                           >
                             {svc.name}
                           </Link>
                         ) : (
-                          <code className="font-mono text-ink-dim">
+                          <code className="font-mono text-muted-foreground">
                             {truncHex(a.serviceId)}
                           </code>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-xs">
+                      <td className="px-4 py-3 font-mono text-xs">
                         ${formatUsdc(a.amountPaid)}
                       </td>
                       <td className="px-4 py-3">
                         {a.success ? (
-                          <Badge variant="success">success</Badge>
+                          <Badge className="bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/20">
+                            success
+                          </Badge>
                         ) : (
-                          <Badge variant="bad">failed</Badge>
+                          <Badge variant="destructive">failed</Badge>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-xs">{a.latencyMs.toString()}ms</td>
+                      <td className="px-4 py-3 font-mono text-xs">
+                        {a.latencyMs.toString()}ms
+                      </td>
                       <td className="px-4 py-3">
                         <HashLink value={a.x402PaymentHash} kind="tx" />
                       </td>
@@ -184,7 +215,7 @@ export default async function AgentProfilePage({
                 })}
               </tbody>
             </table>
-          </Card>
+          </div>
         )}
       </section>
     </div>
@@ -204,12 +235,16 @@ function RepStat({
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
-        <span className="text-[10px] uppercase tracking-wider text-ink-dim">{label}</span>
-        <span className="text-xs text-ink">{pts}/{max}</span>
+        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          {label}
+        </span>
+        <span className="font-mono text-xs">
+          {pts}/{max}
+        </span>
       </div>
-      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-bg">
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
         <div
-          className="h-full rounded-full bg-accent"
+          className="h-full rounded-full bg-gradient-brand"
           style={{ width: `${pct}%` }}
         />
       </div>
