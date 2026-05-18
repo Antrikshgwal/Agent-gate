@@ -45,7 +45,7 @@ export async function getAllServices(): Promise<Service[]> {
     ...serviceRegistry,
     functionName: "getAllServices",
   })) as Service[];
-  return raw;
+  return raw.filter((s) => !/localhost|127\.0\.0\.1/i.test(s.endpoint));
 }
 
 export async function getServiceById(
