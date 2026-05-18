@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -99,6 +99,14 @@ interface RunResult {
 }
 
 export default function PlaygroundPage() {
+  return (
+    <Suspense fallback={null}>
+      <PlaygroundInner />
+    </Suspense>
+  );
+}
+
+function PlaygroundInner() {
   const search = useSearchParams();
   const [services, setServices] = useState<ServiceLite[]>([]);
   const [serviceId, setServiceId] = useState<string>("");

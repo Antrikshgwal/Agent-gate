@@ -16,7 +16,7 @@ function optional(name: string, fallback: string): string {
 }
 
 export const config = {
-  port: parseInt(optional("GATEWAY_PORT", "3000"), 10),
+  port: parseInt(optional("PORT", optional("GATEWAY_PORT", "3000")), 10),
 
   kite: {
     rpcUrl: () => required("KITE_RPC_URL"),
